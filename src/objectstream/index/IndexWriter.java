@@ -44,19 +44,18 @@ public class IndexWriter<E> implements IndexConstants {
 		// pre sort elements
 		if(list.size() > maxSize) {
 			Collections.sort(list, comparator);
-			for(E el: list) {
-				ObjectOutputStream out = null;
-				try {
-					out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(inputFile.toString() + '.' + indexName + '.' + filePostfix + '.' + indexCounter++)));
+			ObjectOutputStream out = null;
+			try {
+				out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(inputFile.toString() + '.' + indexName + '.' + filePostfix + '.' + indexCounter++)));
+				for(E el: list)
 					out.writeObject(el);
-				} catch (IOException ex) {
-					System.out.println(ex);
-				} finally {
-					if(out != null)
-						try {
-							out.close();
-						} catch (IOException e1) {}
-				}
+			} catch (IOException ex) {
+				System.out.println(ex);
+			} finally {
+				if(out != null)
+					try {
+						out.close();
+					} catch (IOException e1) {}
 			}
 			list.clear();
 		}
