@@ -2,7 +2,7 @@
  * Copyright 2012 Thomas Meyer
  */
 
-package objectstream.index;
+package common.io.objectstream.index;
 
 interface IndexConstants {
 	String filePostfix = "index";

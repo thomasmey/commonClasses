@@ -2,7 +2,7 @@
  * Copyright 2012 Thomas Meyer
  */
 
-package objectstream.index;
+package common.io.objectstream.index;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
