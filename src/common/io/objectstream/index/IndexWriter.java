@@ -19,7 +19,7 @@ public class IndexWriter<E> implements IndexConstants {
 	private final File inputFile;
 	private final Comparator<E> comparator;
 	private final String indexName;
-	private final List<E> list = new ArrayList<E>();
+	private final List<E> list;
 	private int indexCounter;
 	
 	private static final int MAX_ELEMENTS = 50000;
@@ -28,6 +28,7 @@ public class IndexWriter<E> implements IndexConstants {
 		this.inputFile = inputFile;
 		this.indexName = indexName;
 		this.comparator = comparator;
+		this.list = new ArrayList<E>();
 	}
 
 	public boolean write(E e) {

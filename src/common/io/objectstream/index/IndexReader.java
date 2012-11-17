@@ -51,10 +51,7 @@ public class IndexReader<T extends Serializable> implements IndexConstants {
 	}
 
 	public long binarySearch(T key) {
-		long startTime = System.nanoTime();
 		long ret = binarySearch(randomObjectInput, key, comparator);
-		long diff = System.nanoTime() - startTime;
-		System.out.println("search took " + diff/1000 + "µs");
 		return ret;
 	}
 
@@ -84,10 +81,8 @@ public class IndexReader<T extends Serializable> implements IndexConstants {
 
 		Exception ex = null;
 		try {
-			long fileSize = randomObjectInput.length();
-
-			long low = 0;
-			long high = fileSize;
+			long low = 4;
+			long high = randomObjectInput.seekObjectPrevious(randomObjectInput.length());
 
 			while(low <= high) {
 				long mid = (low + high) / 2;
@@ -96,12 +91,6 @@ public class IndexReader<T extends Serializable> implements IndexConstants {
 					// object search went to far for the current borders
 					midSeek = high;
 					randomObjectInput.seek(midSeek);
-				} else if (midSeek == high && midSeek == low) {
-					// no exact match for this key
-					break;
-				} else if(midSeek < 0) {
-					// EOF detected
-					midSeek = randomObjectInput.seekObjectPrevious(mid);
 				}
 				T entry = (T) randomObjectInput.readObject();
 				int comp = c.compare(entry, key);
@@ -110,10 +99,15 @@ public class IndexReader<T extends Serializable> implements IndexConstants {
 				} else if (comp > 0) {
 					high = randomObjectInput.seekObjectPrevious(midSeek);
 				} else if (comp == 0){
-					return mid;
+					return midSeek;
+				}
+
+				// break loop when algorytm hangs
+				if (midSeek == high && midSeek == low) {
+					return -(midSeek);
 				}
 			}
-			return -(randomObjectInput.seekObjectNext(low));
+			return -(low);
 		} catch (EOFException e) {
 			e.printStackTrace();
 		} catch (Exception e) {

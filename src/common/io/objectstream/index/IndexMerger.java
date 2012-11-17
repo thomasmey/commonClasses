@@ -27,17 +27,18 @@ public class IndexMerger<T> implements Callable<Void>, IndexConstants {
 	private final int noMaxObjects;
 	private final Comparator<? super T> comparator;
 	private final boolean removeInputfiles;
+	private final File indexFile;
 
 	private ObjectInputStream[] ois;
 	private File[] inFile;
-	private ObjectOutputStream oos;
+	private final ObjectOutputStream oos;
 
 	public IndexMerger(final File baseFileName, final String indexName,
 			int noMaxObjects, Comparator<? super T> comparator,
 			boolean removeInputfiles) throws FileNotFoundException, IOException {
 
-		if(noMaxObjects <=0)
-			throw new IllegalArgumentException("noMaxArguments is <=0");
+		if(noMaxObjects <= 0)
+			throw new IllegalArgumentException("noMaxArguments is <= 0");
 
 		if(baseFileName == null)
 			throw new IllegalArgumentException("fileName is null");
@@ -45,7 +46,8 @@ public class IndexMerger<T> implements Callable<Void>, IndexConstants {
 //		if(baseFileName)
 //			throw new IllegalArgumentException("fileName is empty!");
 
-		File dir = baseFileName.getParentFile();
+		File dir = baseFileName.getAbsoluteFile();
+		dir = dir.getParentFile();
 		File[] files = dir.listFiles(new FilenameFilter() {
 
 				@Override
@@ -63,8 +65,8 @@ public class IndexMerger<T> implements Callable<Void>, IndexConstants {
 			inFile[i] = files[i];
 			ois[i] = new ObjectInputStream(new BufferedInputStream(new FileInputStream(inFile[i])));
 		}
-
-		oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(baseFileName.toString() + '.' + indexName + '.'+ filePostfix)));
+		indexFile = new File(baseFileName.toString() + '.' + indexName + '.'+ filePostfix);
+		oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(getIndexFile())));
 		this.noMaxObjects = noMaxObjects;
 		this.comparator = comparator;
 		this.removeInputfiles = removeInputfiles;
@@ -172,5 +174,9 @@ public class IndexMerger<T> implements Callable<Void>, IndexConstants {
 			if(oos != null)
 				oos.close();
 		} catch (IOException e) {}
+	}
+
+	public File getIndexFile() {
+		return indexFile;
 	}
 }

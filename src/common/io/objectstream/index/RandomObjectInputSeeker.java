@@ -15,9 +15,10 @@ class RandomObjectInputSeeker {
 	public long seekObjectNext(long pos) {
 		if(pos < 0)
 			throw new IllegalArgumentException();
+		long len = 0;
 
 		try {
-			long len = in.length();
+			len = in.length();
 
 			// seek to next object in object stream
 			in.seek(++pos);
@@ -41,11 +42,11 @@ class RandomObjectInputSeeker {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return -1;
+		return seekObjectPrevious(len);
 	}
 
 	public long seekObjectPrevious(long pos) {
-		if(pos < 0)
+		if(pos < 1)
 			throw new IllegalArgumentException();
 
 		try {
@@ -72,7 +73,7 @@ class RandomObjectInputSeeker {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return -1;
+		return 4;
 	}
 
 	private Long checkForObject(byte b) throws IOException {
