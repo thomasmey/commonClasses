@@ -14,20 +14,24 @@ import java.util.Comparator;
 
 public class IndexReader<T extends Serializable> implements IndexConstants {
 
+	private static final long IN_MEMORY_INDEX_SIZE = 4 * 1024 * 1024;
 	private final RandomObjectInput randomObjectInput;
 	private final Comparator<? super T> comparator;
 
 	public IndexReader(File baseFile, String indexName, Comparator<? super T> comparator) throws IOException, ClassNotFoundException {
 		super();
 		RandomAccessFile raf = new RandomAccessFile(baseFile.toString() + '.' + indexName + '.' + filePostfix, "r");
+
+		//optimization for short files
 		long size = raf.length();
-		if(size < 4 * 1024 * 1024) {
+		if(size < IN_MEMORY_INDEX_SIZE) {
 			byte[] ba = new byte[(int) size];
 			raf.read(ba);
 			this.randomObjectInput = new ByteArrayInputStreamObjectInputStream<T>(new ByteArrayInputStream(ba));
 			raf.close();
 		} else
 			this.randomObjectInput = new RandomAccessFileObjectInputStream<T>(raf);
+
 		this.comparator = comparator;
 	}
 
