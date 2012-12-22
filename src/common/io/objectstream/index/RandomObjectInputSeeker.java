@@ -3,52 +3,34 @@ package common.io.objectstream.index;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.nio.ByteBuffer;
 
 class RandomObjectInputSeeker {
 
 	private final RandomObjectInput in;
-	private final byte[] byteArrays;
-	private final ByteBuffer byteBuffer;
-	private long basePosition;
 
 	public RandomObjectInputSeeker(RandomObjectInput in) {
 		this.in = in;
-		byteArrays = new byte[4096];
-		byteBuffer = ByteBuffer.wrap(byteArrays);
 	}
 
 	public long seekObjectNext(long pos) {
-		if(pos < 0)
-			throw new IllegalArgumentException();
 
-		basePosition = pos + 1;
+		long basePosition = pos + 1;
 		try {
 			long len = in.length();
-			if(basePosition > len) {
-				throw new IllegalArgumentException();
-			}
-
 			// seek to next object in object stream
 			in.seek(basePosition);
-
-			// read some bytes
-			byteBuffer.rewind();
-			int l = in.read(byteArrays);
-			byteBuffer.limit(l);
-
 			while (true) {
-				byte b = byteBuffer.get();
+				byte b = in.readByte();
+				basePosition = in.getPosition();
 				if(b == ObjectInputStream.TC_OBJECT) {
-					byteBuffer.mark();
 					Long p1 = checkForObject();
 					if(p1 != null) {
 						in.seek(p1);
 						return p1;
 					}
-					byteBuffer.reset();
+					in.seek(basePosition);
 				}
-				if(byteBuffer.position() + basePosition >= len)
+				if(in.getPosition() >= len)
 					return seekObjectPrevious(len);
 			}
 		} catch(EOFException e) {
@@ -60,44 +42,29 @@ class RandomObjectInputSeeker {
 	}
 
 	public long seekObjectPrevious(long pos) {
-		if(pos < 1)
-			throw new IllegalArgumentException();
 
 		try {
-			int byteBufferOffset = this.byteArrays.length / 2;
 
-			if(pos < byteBufferOffset) {
-				byteBufferOffset = (int) (pos / 2);
-			}
-
-			basePosition = pos - byteBufferOffset - 1;
-
-			long len = in.length();
-			if(basePosition > len) {
-				throw new IllegalArgumentException();
-			}
+			long basePosition = pos - 1;
 
 			// seek to next object in object stream
 			in.seek(basePosition);
 
-			byteBuffer.rewind();
-			// read some bytes
-			int l = in.read(byteArrays);
-			byteBuffer.limit(l);
-			byteBuffer.position(byteBufferOffset);
-
 			while (true) {
-				byte b = byteBuffer.get();
+				byte b = in.readByte();
+				basePosition = in.getPosition();
 				if(b == ObjectInputStream.TC_OBJECT) {
-					byteBuffer.mark();
 					Long p1 = checkForObject();
 					if(p1 != null) {
 						in.seek(p1);
 						return p1;
 					}
-					byteBuffer.reset();
 				}
-				byteBuffer.position(--byteBufferOffset);
+
+				if(basePosition -2 <= 0)
+					break;
+
+				in.seek(basePosition - 2);
 			}
 		} catch(EOFException e) {
 		} catch (IOException e) {
@@ -108,12 +75,12 @@ class RandomObjectInputSeeker {
 
 	private Long checkForObject() throws IOException {
 
-		byte b = byteBuffer.get();
+		byte b = in.readByte();
 		switch (b) {
 		case ObjectInputStream.TC_REFERENCE:
-			int handle = byteBuffer.getInt();
+			int handle = in.readInt();
 			if(handle == ObjectInputStream.baseWireHandle) {
-				Long pos = byteBuffer.position() + basePosition - 6;
+				Long pos = in.getPosition() - 6;
 				return pos;
 			}
 		case ObjectInputStream.TC_CLASSDESC:

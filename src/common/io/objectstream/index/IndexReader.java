@@ -5,6 +5,7 @@
 package common.io.objectstream.index;
 
 import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -12,17 +13,18 @@ import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.Comparator;
 
-public class IndexReader<T extends Serializable> implements IndexConstants {
+public class IndexReader<T extends Serializable> implements IndexConstants, Closeable {
 
 	private static final long IN_MEMORY_INDEX_SIZE = 4 * 1024 * 1024;
-	private final RandomObjectInput randomObjectInput;
 	private final Comparator<? super T> comparator;
 
+	private RandomObjectInput randomObjectInput;
+
 	public IndexReader(File baseFile, String indexName, Comparator<? super T> comparator) throws IOException, ClassNotFoundException {
-		super();
+
 		RandomAccessFile raf = new RandomAccessFile(baseFile.toString() + '.' + indexName + '.' + filePostfix, "r");
 
-		//optimization for short files
+		//optimization for short index files
 		long size = raf.length();
 		if(size < IN_MEMORY_INDEX_SIZE) {
 			byte[] ba = new byte[(int) size];
@@ -119,5 +121,11 @@ public class IndexReader<T extends Serializable> implements IndexConstants {
 			ex = e;
 		}
 		throw new RuntimeException(ex);
+	}
+
+	@Override
+	public void close() throws IOException {
+		randomObjectInput.close();
+		randomObjectInput = null;
 	}
 }

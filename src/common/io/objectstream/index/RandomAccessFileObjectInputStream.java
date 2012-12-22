@@ -1,24 +1,46 @@
 package common.io.objectstream.index;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamConstants;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 
 public class RandomAccessFileObjectInputStream<T> extends InputStream implements RandomObjectInput, ObjectStreamConstants {
 
-	private final RandomAccessFile randomAccess;
-	private final ObjectInputStream in;
-	private final RandomObjectInputSeeker seeker;
+	private RandomAccessFile randomAccess;
+	private ObjectInputStream in;
+	private RandomObjectInputSeeker seeker;
+
+	private static final int BUFFER_SIZE = 65536;
+	// for reverse seek
+	private static final int BUFFER_OFFSET = BUFFER_SIZE / 10;
+	private byte[] byteArrays;
+	private ByteBuffer byteBuffer;
+	private long basePosition;
+	private long seekPosition;
 
 	public RandomAccessFileObjectInputStream(RandomAccessFile raf) throws IOException, ClassNotFoundException {
+
 		this.randomAccess = raf;
+
+		// buffering
+		this.byteArrays = new byte[BUFFER_SIZE];
+		this.byteBuffer = ByteBuffer.wrap(byteArrays);
+		this.byteBuffer.limit(0);
+		this.seekPosition = -1;
+
 		this.in = new ObjectInputStream(this);
 		// consume first object to create classdef handle...
 		// stream must contain only object of same class!
-		seeker = new RandomObjectInputSeeker(this);
 		in.readObject();
+
+		// and back to first object
+		seek(4);
+
+		seeker = new RandomObjectInputSeeker(this);
 	}
 
 	public long seekObjectNext(long pos) throws IOException {
@@ -33,17 +55,74 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 		return randomAccess.length();
 	}
 
-	public void seek(long mid) throws IOException {
-		randomAccess.seek(mid);
+	public T readObject() throws ClassNotFoundException, IOException {
+		return (T) in.readObject();
+	}
+
+	public void seek(long pos) throws IOException {
+
+		if(pos < 0 || pos > length())
+			throw new IllegalArgumentException();
+
+		if(pos >= basePosition && pos <= basePosition + byteBuffer.limit()) {
+			byteBuffer.position((int) (pos - basePosition));
+		} else {
+			seekPosition = pos;
+			// drain buffer
+			byteBuffer.limit(0);
+		}
 	}
 
 	@Override
 	public int read() throws IOException {
-		return randomAccess.read();
+
+		int size = ensureBuffer();
+		if(size < 1) {
+			return -1;
+		}
+
+		int b = byteBuffer.get() & 0xff;
+		return b;
 	}
 
-	public T readObject() throws ClassNotFoundException, IOException {
-		return (T) in.readObject();
+	private int ensureBuffer() throws IOException {
+
+		// any data left in buffer?
+		if(!byteBuffer.hasRemaining()) {
+
+			int bytesRead = -1;
+			if(seekPosition >= 0) {
+				basePosition = seekPosition;
+				seekPosition = -1;
+			} else {
+				basePosition = randomAccess.getFilePointer();
+			}
+
+			if(basePosition > BUFFER_OFFSET) {
+				basePosition = basePosition - BUFFER_OFFSET;
+				randomAccess.seek(basePosition);
+				byteBuffer.rewind();
+				bytesRead = randomAccess.read(byteArrays);
+
+				if(bytesRead >= 0) {
+					byteBuffer.limit(bytesRead);
+					int split = bytesRead < BUFFER_OFFSET ? bytesRead / 2 : BUFFER_OFFSET;
+					byteBuffer.position(split);
+					bytesRead = bytesRead - split;
+				}
+			} else {
+				randomAccess.seek(basePosition);
+				byteBuffer.rewind();
+				bytesRead = randomAccess.read(byteArrays);
+				if(bytesRead >= 0) {
+					byteBuffer.limit(bytesRead);
+				}
+			}
+
+			return bytesRead;
+		}
+
+		return byteBuffer.remaining();
 	}
 
 	@Override
@@ -68,7 +147,12 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 
 	@Override
 	public byte readByte() throws IOException {
-		return randomAccess.readByte();
+		int size = ensureBuffer();
+		if(size < 0) {
+			throw new EOFException();
+		}
+
+		return byteBuffer.get();
 	}
 
 	@Override
@@ -93,7 +177,12 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 
 	@Override
 	public int readInt() throws IOException {
-		return randomAccess.readInt();
+		int size = ensureBuffer();
+		if(size < 0) {
+			throw new EOFException();
+		}
+
+		return byteBuffer.getInt();
 	}
 
 	@Override
@@ -123,6 +212,21 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 
 	@Override
 	public long getPosition() throws IOException {
-		return randomAccess.getFilePointer();
+//		return randomAccess.getFilePointer();
+		return basePosition + byteBuffer.position();
 	}
+
+	@Override
+	public void close() throws IOException {
+
+		//FIXME: ObjectInputStream, also closes underlying stream, is this object!
+//		in.close();
+		randomAccess.close();
+		randomAccess = null;
+		in = null;
+		seeker = null;
+		byteArrays = null;
+		byteBuffer = null;
+	}
+
 }
