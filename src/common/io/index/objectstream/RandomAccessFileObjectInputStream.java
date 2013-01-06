@@ -1,4 +1,4 @@
-package common.io.objectstream.index;
+package common.io.index.objectstream;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -35,7 +35,8 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 		this.in = new ObjectInputStream(this);
 		// consume first object to create classdef handle...
 		// stream must contain only object of same class!
-		in.readObject();
+//		in.readObject();
+		in.readUnshared();
 
 		// and back to first object
 		seek(4);
@@ -56,7 +57,8 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 	}
 
 	public T readObject() throws ClassNotFoundException, IOException {
-		return (T) in.readObject();
+		// don't share objects!
+		return (T) in.readUnshared();
 	}
 
 	public void seek(long pos) throws IOException {
@@ -87,9 +89,12 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 
 	private int ensureBuffer() throws IOException {
 
-		// any data left in buffer?
-		if(!byteBuffer.hasRemaining()) {
+		int remaining = byteBuffer.remaining();
 
+		// any data left in buffer?
+		if(remaining > 0)
+			return remaining;
+		else {
 			int bytesRead = -1;
 			if(seekPosition >= 0) {
 				basePosition = seekPosition;
@@ -121,8 +126,6 @@ public class RandomAccessFileObjectInputStream<T> extends InputStream implements
 
 			return bytesRead;
 		}
-
-		return byteBuffer.remaining();
 	}
 
 	@Override

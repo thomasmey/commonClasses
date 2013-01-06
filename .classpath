@@ -2,5 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="lib" path="/usr/share/java/jackson/jackson-core-asl.jar"/>
+	<classpathentry kind="lib" path="/usr/share/java/jackson/jackson-mapper-asl.jar"/>
+	<classpathentry kind="lib" path="/home/thomas/avro-1.7.3/avro-1.7.3.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/home/thomas/avro-1.7.3/avro-1.7.3-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

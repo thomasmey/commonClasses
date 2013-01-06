@@ -1,4 +1,4 @@
-package common.io.objectstream.index;
+package common.io.index.objectstream;
 
 import java.io.EOFException;
 import java.io.IOException;
