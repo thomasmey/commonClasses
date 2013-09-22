@@ -71,9 +71,9 @@ public abstract class AbstractIndexMerger<T> implements Runnable, IndexConstants
 		try {
 			while (!eofAll) {
 
-				objprev=null;
+				objprev = null;
 				// find smallest obj
-				for(i=0, j=0; j< indexReader.length; j++) {
+				for(i = 0, j = 0; j< indexReader.length; j++) {
 
 					if(!eof[j]) {
 						objcomp = objc.get(j);

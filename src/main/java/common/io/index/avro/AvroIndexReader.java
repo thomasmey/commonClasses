@@ -41,4 +41,25 @@ public class AvroIndexReader<T extends SpecificRecord> extends AbstractIndexRead
 	public void close() throws IOException {
 		dataFileReader.close();
 	}
+
+	@Override
+	public long getLength() throws IOException {
+		return fullIndexName.length();
+	}
+
+	@Override
+	public void sync(long position) throws IOException {
+		dataFileReader.sync(position);
+	}
+
+	@Override
+	public long getPosition() throws IOException {
+		return dataFileReader.tell();
+	}
+
+	@Override
+	public void seek(long position) throws IOException {
+		dataFileReader.seek(position);
+	}
+
 }

@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Comparator;
 
-import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 
 import common.io.index.AbstractIndexMerger;
