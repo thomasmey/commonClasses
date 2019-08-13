@@ -2,7 +2,7 @@
  * Copyright 2012 Thomas Meyer
  */
 
-package common.io.index;
+package common.io.index.impl;
 
 import java.io.EOFException;
 import java.io.File;
@@ -14,54 +14,43 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
-public abstract class AbstractIndexMerger<T> implements Runnable, IndexConstants {
+import common.io.index.IndexConstants;
+import common.io.index.IndexReader;
+import common.io.index.IndexWriter;
+
+public class IndexMerger<T> implements Runnable, IndexConstants {
 
 	protected final int noMaxObjects;
-	protected final boolean removeInputfiles;
-	protected final File indexFile;
 	protected final Comparator<T> comparator;
-	protected final File[] inFiles;
 
-	protected AbstractIndexReader<T>[] indexReader;
-	protected AbstractIndexWriter<T> indexWriter;
+	protected IndexReader<T>[] indexReaders;
+	protected IndexWriter<T> indexWriter;
 
-	public AbstractIndexMerger(File baseFileName, String indexName, int noMaxObjects, Comparator<T> comparator,
-			boolean removeInputfiles) throws IOException {
+	public IndexMerger(int noMaxObjects, Comparator<T> comparator, IndexReader<T>[] indexReaders, IndexWriter<T> indexWriter) {
 
 		if(noMaxObjects <= 0)
 			throw new IllegalArgumentException("noMaxArguments is <= 0");
 
-		if(baseFileName == null || indexName == null)
-			throw new IllegalArgumentException("fileName is null");
-
 		if(comparator == null)
 			throw new IllegalArgumentException();
 
-		this.indexFile = new File(baseFileName.toString() + '.' + indexName + '.'+ filePostfix);
-		this.inFiles = getFiles(baseFileName,indexName);
-
 		this.noMaxObjects = noMaxObjects;
-		this.removeInputfiles = removeInputfiles;
-
 		this.comparator = comparator;
 
-		if(inFiles.length == 0)
-			throw new IllegalArgumentException("No mergable index files found!");
-
-		indexReader = new AbstractIndexReader[inFiles.length];
+		this.indexReaders = indexReaders;
+		this.indexWriter = indexWriter;
 	}
 
 	public void run() {
 
-//		Comparator comparator = index
 		Queue<T> q = new PriorityQueue<T>(noMaxObjects,comparator);
 		T objr = null;
 		T objw;
-		List<T> objc = new ArrayList<T>(indexReader.length); // current object value
-		for (int i=0 ; i < indexReader.length; i++)
+		List<T> objc = new ArrayList<T>(indexReaders.length); // current object value
+		for (int i=0 ; i < indexReaders.length; i++)
 			objc.add(objr);
 
-		boolean[] eof = new boolean[indexReader.length];
+		boolean[] eof = new boolean[indexReaders.length];
 		boolean eofAll = false;
 
 		T objcomp = null;
@@ -73,7 +62,7 @@ public abstract class AbstractIndexMerger<T> implements Runnable, IndexConstants
 
 				objprev = null;
 				// find smallest obj
-				for(i = 0, j = 0; j< indexReader.length; j++) {
+				for(i = 0, j = 0; j< indexReaders.length; j++) {
 
 					if(!eof[j]) {
 						objcomp = objc.get(j);
@@ -99,7 +88,7 @@ public abstract class AbstractIndexMerger<T> implements Runnable, IndexConstants
 					continue;
 
 				try {
-					objr = (T) indexReader[i].readObject();
+					objr = (T) indexReaders[i].readObject();
 				} catch(EOFException e) {
 					// end of input
 					objr = null;
@@ -142,38 +131,16 @@ public abstract class AbstractIndexMerger<T> implements Runnable, IndexConstants
 
 	protected void close() throws IOException {
 
-		for(int i = 0; i < indexReader.length;i++) {
-			if(indexReader[i] != null)
+		for(int i = 0; i < indexReaders.length;i++) {
+			if(indexReaders[i] != null)
 				try {
-					indexReader[i].close();
+					indexReaders[i].close();
 				} catch (IOException e) {}
-			if(removeInputfiles)
-				inFiles[i].delete();
 		}
 
 		try {
 			if(indexWriter != null)
 				indexWriter.close();
 		} catch (IOException e) {}
-	}
-
-	public File getIndexFile() {
-		return indexFile;
-	}
-
-	private static File[] getFiles(final File baseFileName, final String indexName) {
-
-		File dir = baseFileName.getAbsoluteFile();
-		dir = dir.getParentFile();
-		File[] files = dir.listFiles(new FilenameFilter() {
-
-				@Override
-				public boolean accept(File path, String name) {
-					String fileName = baseFileName.getName() + '.' + indexName + '.'+ filePostfix + '.';
-					return name.startsWith(fileName);
-				}
-			}
-		);
-		return files;
 	}
 }

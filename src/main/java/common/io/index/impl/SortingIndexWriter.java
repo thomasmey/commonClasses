@@ -1,25 +1,29 @@
-package common.io.index;
+package common.io.index.impl;
 /*
  * Copyright 2012 Thomas Meyer
  */
 
-import java.io.File;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public abstract class AbstractSortingIndexWriter<E> extends AbstractIndexWriter<E> {
+import common.io.index.IndexWriter;
+import common.io.index.IndexWriterFactory;
+
+public class SortingIndexWriter<E> implements Closeable {
 
 	protected final int noMaxObjects;
 	protected final List<E> list;
 	protected final Comparator<E> comparator;
 
 	protected int indexCounter;
+	private IndexWriterFactory<E> indexWriterFactory;
 
-	public AbstractSortingIndexWriter(File baseFile, String indexName, int noMaxObjects, Comparator<E> comparator) throws IOException {
-		super(baseFile, indexName);
+	public SortingIndexWriter(IndexWriterFactory<E> indexWriterFactory, int noMaxObjects, Comparator<E> comparator) throws IOException {
+		this.indexWriterFactory = indexWriterFactory;
 		if(noMaxObjects < 0)
 			throw new IllegalArgumentException();
 
@@ -30,7 +34,6 @@ public abstract class AbstractSortingIndexWriter<E> extends AbstractIndexWriter<
 	}
 
 	public void writeObject(E obj) throws IOException {
-
 		list.add((E) obj);
 		checkListLimit(noMaxObjects);
 	}
@@ -45,15 +48,16 @@ public abstract class AbstractSortingIndexWriter<E> extends AbstractIndexWriter<
 		}
 	}
 
-	protected abstract void writeElements(List<E> list) throws IOException;
-
-	@Override
-	public void flush() throws IOException {
-		checkListLimit(0);
+	private void writeElements(List<E> list) throws IOException {
+		try(IndexWriter<E> indexWriter = indexWriterFactory.createIndexWriter(indexCounter)) {
+			for(E obj: list) {
+				indexWriter.writeObject(obj);
+			}
+		}
 	}
 
 	@Override
 	public void close() throws IOException {
-		flush();
+		checkListLimit(0);
 	}
 }
